@@ -209,7 +209,7 @@ namespace Crystal.POLAuth
             try
             {
                 // Figuring out this is a service barely works on linux.
-                bool isServiceMode = ((OperatingSystem.IsLinux() && Environment.GetEnvironmentVariable("INVOCATION_ID") != null)) || !Environment.UserInteractive;
+                bool isServiceMode = ((OperatingSystem.IsLinux() && Environment.GetEnvironmentVariable("INVOCATION_ID") != null)) || !Environment.UserInteractive || Console.IsInputRedirected;
 
                 if (isServiceMode)
                 {
