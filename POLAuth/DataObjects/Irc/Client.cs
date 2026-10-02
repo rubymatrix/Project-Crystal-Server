@@ -161,38 +161,32 @@ namespace Crystal.POLAuth.DataObjects.Irc
 
         public void DoPolProNotifierLogin(string scrambledPOLID, string passwordMd5)
         {
-            // Check IP if we are only accepting a single one
-            //if (!ClientIp.ToString().Equals(Server.PolProIpAddress))
-            //{
-            //    SendLine($"ERROR :Closing Link: [unknown@{ClientIp}] (Shit)");
-            //    Disconnect();
-            //    return;
-            //}
-
             SetNick(scrambledPOLID);
 
             byte[] notifierPwd = Encoding.ASCII.GetBytes(Server.PolProPassword);
             string polProMd5 = SqCrypto.GeneratePOLPasswordMD5(InitInfoBase32, notifierPwd);
 
-            // If gucci, create session and respond            
-            //if (!GetPolID().Equals(Server.PolProId) && !passwordMd5.Equals(polProMd5))
-            //{
-                // Clear out an active sessions and add this one!
-                Client sameSessionClient = Server.CheckForSameSession(this);
-                if (sameSessionClient != null)
-                    sameSessionClient.KickSameSession();
-                Database.CreateAccountSession(this);
+            // Only the profile server's notifier may log on as the notifier: its POL ID and password from polauth.cfg,
+            // and its address when <polpro notifierIp> names one.
+            bool fromNotifierIp = string.IsNullOrEmpty(Server.PolProIpAddress) || ClientIp.ToString().Equals(Server.PolProIpAddress);
+            if (!fromNotifierIp || !GetPolID().Equals(Server.PolProId) || !passwordMd5.Equals(polProMd5))
+            {
+                Program.Log.Warn($"Refused a PolPro Notifier login from {ClientIp} (wrong {(fromNotifierIp ? "POL ID or password" : "address")})");
+                SendLine($"ERROR :Closing Link: [unknown@{ClientIp}] (Bad notifier login)");
+                Disconnect();
+                return;
+            }
 
-                IrcReplies.ReplyWelcome(this, Server.ServerName, "Gucci");
-                IsBot = true;
-                Server.SetNotifyClient(this);
-                Program.Log.Info($"PolPro Notifier {GetPolID()} has connected.");
-            //}
-            //else
-            //{
-                //SendLine($"ERROR :Closing Link: [unknown@{ClientIp}] (Shit)");
-               // Disconnect();
-           // }
+            // Clear out an active sessions and add this one!
+            Client sameSessionClient = Server.CheckForSameSession(this);
+            if (sameSessionClient != null)
+                sameSessionClient.KickSameSession();
+            Database.CreateAccountSession(this);
+
+            IrcReplies.ReplyWelcome(this, Server.ServerName, "Gucci");
+            IsBot = true;
+            Server.SetNotifyClient(this);
+            Program.Log.Info($"PolPro Notifier {GetPolID()} has connected.");
         }
 
         public void DoLogin(string scrambledPOLID, string passwordMd5, string clientInfoEncoded)
